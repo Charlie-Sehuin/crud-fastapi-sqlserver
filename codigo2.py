@@ -1,2 +1,2 @@
-nombre="Prueba 2"
+nombre="Prueba 3"
 print(nombre)

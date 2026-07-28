@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { TasksRepository } from './tasks.repository';
 import { CreateTaskDto } from './dto/create-task.dto';
 
@@ -6,19 +6,36 @@ import { CreateTaskDto } from './dto/create-task.dto';
 export class TasksService {
   constructor(private readonly tasksRepository: TasksRepository) {}
 
-  findAll(userId: string) {
-    return this.tasksRepository.findAllByUser(userId);
+  private async assertListOwnership(listId: string, userId: string) {
+    const list = await this.tasksRepository.findListOwner(listId);
+
+    if (!list) {
+      throw new NotFoundException(`Lista ${listId} no encontrada`);
+    }
+    // boards viene como objeto anidado gracias al select() con relación
+    const ownerId = (list as any).boards?.user_id;
+    if (ownerId !== userId) {
+      throw new ForbiddenException('No tenés acceso a esta lista');
+    }
   }
 
-  create(dto: CreateTaskDto, userId: string) {
-    return this.tasksRepository.create(dto, userId);
+  async findAll(listId: string, userId: string) {
+    await this.assertListOwnership(listId, userId);
+    return this.tasksRepository.findAllByList(listId);
   }
 
-  toggleDone(id: string, userId: string, done: boolean) {
-    return this.tasksRepository.toggleDone(id, userId, done);
+  async create(dto: CreateTaskDto, userId: string) {
+    await this.assertListOwnership(dto.listId, userId);
+    return this.tasksRepository.create(dto);
   }
 
-  remove(id: string, userId: string) {
-    return this.tasksRepository.delete(id, userId);
+  async toggleDone(id: string, listId: string, userId: string, done: boolean) {
+    await this.assertListOwnership(listId, userId);
+    return this.tasksRepository.toggleDone(id, done);
+  }
+
+  async remove(id: string, listId: string, userId: string) {
+    await this.assertListOwnership(listId, userId);
+    return this.tasksRepository.delete(id);
   }
 }

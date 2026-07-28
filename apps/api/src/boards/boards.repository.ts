@@ -1,38 +1,44 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
-import { CreateTaskDto } from './dto/create-task.dto';
+import { CreateBoardDto } from './dto/create-board.dto';
 
 @Injectable()
-export class TasksRepository {
+export class BoardsRepository {
   constructor(private readonly db: DatabaseService) {}
 
-  async findAllByList(listId: string) {
+  async findAllByUser(userId: string) {
     const { data, error } = await this.db.getClient()
-      .from('tasks')
+      .from('boards')
       .select('*')
-      .eq('list_id', listId)
+      .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
     if (error) throw new InternalServerErrorException(error.message);
     return data;
   }
 
-  async create(dto: CreateTaskDto) {
+  // Trae el board con sus listas y las tareas de cada lista, todo anidado
+  async findByIdWithLists(id: string) {
     const { data, error } = await this.db.getClient()
-      .from('tasks')
-      .insert({ title: dto.title, list_id: dto.listId })
-      .select()
-      .single();
-
-    if (error) throw new InternalServerErrorException(error.message);
-    return data;
-  }
-
-  async toggleDone(id: string, done: boolean) {
-    const { data, error } = await this.db.getClient()
-      .from('tasks')
-      .update({ done })
+      .from('boards')
+      .select(`
+        id, name, user_id, created_at,
+        lists (
+          id, name, position,
+          tasks ( id, title, done, created_at )
+        )
+      `)
       .eq('id', id)
+      .single();
+
+    if (error) throw new InternalServerErrorException(error.message);
+    return data;
+  }
+
+  async create(dto: CreateBoardDto, userId: string) {
+    const { data, error } = await this.db.getClient()
+      .from('boards')
+      .insert({ name: dto.name, user_id: userId })
       .select()
       .single();
 
@@ -40,26 +46,14 @@ export class TasksRepository {
     return data;
   }
 
-  async delete(id: string) {
+  async delete(id: string, userId: string) {
     const { error } = await this.db.getClient()
-      .from('tasks')
+      .from('boards')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_id', userId);
 
     if (error) throw new InternalServerErrorException(error.message);
     return { deleted: true };
-  }
-
-  // Necesario para que el service valide el dueño antes de crear/tocar una tarea.
-  // Recorre list -> board -> user_id en una sola consulta.
-  async findListOwner(listId: string) {
-    const { data, error } = await this.db.getClient()
-      .from('lists')
-      .select('board_id, boards(user_id)')
-      .eq('id', listId)
-      .single();
-
-    if (error) throw new InternalServerErrorException(error.message);
-    return data;
   }
 }

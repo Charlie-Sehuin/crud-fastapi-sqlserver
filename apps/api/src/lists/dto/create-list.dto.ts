@@ -1,11 +1,11 @@
 import { IsString, IsNotEmpty, MaxLength, IsUUID } from 'class-validator';
 
-export class CreateTaskDto {
+export class CreateListDto {
   @IsUUID()
-  listId: string;
+  boardId: string;
 
   @IsString()
   @IsNotEmpty()
-  @MaxLength(200)
-  title: string;
+  @MaxLength(100)
+  name: string;
 }

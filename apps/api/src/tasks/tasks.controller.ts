@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards } from '@nestjs/common';
 import { TasksService } from './tasks.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { AuthGuard } from '../common/guards/auth.guard';
@@ -10,8 +10,8 @@ export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
 
   @Get()
-  findAll(@CurrentUser() user: any) {
-    return this.tasksService.findAll(user.id);
+  findAll(@Query('listId') listId: string, @CurrentUser() user: any) {
+    return this.tasksService.findAll(listId, user.id);
   }
 
   @Post()
@@ -20,12 +20,17 @@ export class TasksController {
   }
 
   @Patch(':id')
-  toggleDone(@Param('id') id: string, @CurrentUser() user: any, @Body('done') done: boolean) {
-    return this.tasksService.toggleDone(id, user.id, done);
+  toggleDone(
+    @Param('id') id: string,
+    @Query('listId') listId: string,
+    @Body('done') done: boolean,
+    @CurrentUser() user: any,
+  ) {
+    return this.tasksService.toggleDone(id, listId, user.id, done);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.tasksService.remove(id, user.id);
+  remove(@Param('id') id: string, @Query('listId') listId: string, @CurrentUser() user: any) {
+    return this.tasksService.remove(id, listId, user.id);
   }
 }
